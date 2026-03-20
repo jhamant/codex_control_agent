@@ -1,0 +1,1 @@
+Read this repository and summarize the current project goal and the immediate next implementation step.
