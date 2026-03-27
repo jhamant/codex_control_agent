@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import time
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
@@ -109,6 +110,13 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["read-only", "workspace-write", "danger-full-access"],
         default="read-only",
         help="Sandbox mode passed to `codex exec`. Defaults to read-only.",
+    )
+    run_loop_parser.add_argument(
+        "--interval",
+        type=float,
+        default=None,
+        metavar="MINUTES",
+        help="Minutes to wait between cycles. If omitted, cycles run back-to-back.",
     )
     run_loop_parser.set_defaults(handler=handle_run_loop)
 
@@ -271,10 +279,35 @@ def handle_run_loop(args: argparse.Namespace) -> int:
             completed_runs += 1
 
         completed_cycles += 1
-        print(
-            f"run-loop: completed cycle {completed_cycles}; continuing",
-            file=sys.stderr,
-        )
+
+        if args.interval is not None:
+            deadline = time.monotonic() + args.interval * 60
+            print(
+                f"run-loop: completed cycle {completed_cycles}; "
+                f"waiting {args.interval} minute(s) before next cycle",
+                file=sys.stderr,
+            )
+            while time.monotonic() < deadline:
+                if stop_path.exists():
+                    state = replace(state, status="stopped")
+                    if not persist_loop_state(layout, state):
+                        return 1
+                    print(
+                        (
+                            "run-loop stopped: stop signal detected during interval "
+                            f"wait after cycle {completed_cycles}; completed "
+                            f"{completed_runs} prompt(s) across {completed_cycles} "
+                            "full cycle(s)"
+                        ),
+                        file=sys.stderr,
+                    )
+                    return 0
+                time.sleep(1)
+        else:
+            print(
+                f"run-loop: completed cycle {completed_cycles}; continuing",
+                file=sys.stderr,
+            )
 
 
 def require_codex_path() -> str | None:

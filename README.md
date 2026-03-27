@@ -20,6 +20,7 @@ What exists now:
 - Prompt, log, and state folders with a sample prompt file.
 - Timestamped transcript logging under `logs/` for every Codex run.
 - A simple user stop signal via `state/STOP`.
+- An optional `--interval MINUTES` flag on `run-loop` to pause between cycles (stop signal is still checked every second during the wait).
 - Minimal loop state files under `state/STATUS`, `state/CURRENT_PROMPT`, `state/LAST_PROMPT`, and `state/LAST_EXIT_CODE`.
 - Step-by-step documentation through step 5 and the exact next prompt for step 6.
 
@@ -68,6 +69,7 @@ python3 -m pip install -e .
 codex-control-agent status
 codex-control-agent run-once prompts/example_prompt.txt --sandbox read-only
 codex-control-agent run-loop prompts --sandbox read-only
+codex-control-agent run-loop prompts --sandbox read-only --interval 5
 codex-control-agent --target-repo ../other-repo run-loop prompts --sandbox workspace-write
 touch state/STOP
 cat state/STATUS state/CURRENT_PROMPT state/LAST_PROMPT state/LAST_EXIT_CODE
@@ -79,10 +81,11 @@ You can also run the package without installing it:
 PYTHONPATH=src python3 -m codex_control_agent status
 PYTHONPATH=src python3 -m codex_control_agent run-once prompts/example_prompt.txt --sandbox read-only
 PYTHONPATH=src python3 -m codex_control_agent run-loop prompts --sandbox read-only
+PYTHONPATH=src python3 -m codex_control_agent run-loop prompts --sandbox read-only --interval 5
 PYTHONPATH=src python3 -m codex_control_agent --target-repo ../other-repo run-loop prompts --sandbox workspace-write
 ```
 
-If `--target-repo` is omitted, Codex still runs in `--root`. If it is provided, prompts, logs, and state remain under the controller root while the Codex subprocess runs in the target repo. `run-loop` accepts either an ordered list of prompt files or one or more directories, expands directory inputs to top-level `.txt` files in sorted order, and keeps cycling through that resolved prompt list until `state/STOP` is present before the next prompt or a prompt exits non-zero.
+If `--target-repo` is omitted, Codex still runs in `--root`. If it is provided, prompts, logs, and state remain under the controller root while the Codex subprocess runs in the target repo. `run-loop` accepts either an ordered list of prompt files or one or more directories, expands directory inputs to top-level `.txt` files in sorted order, and keeps cycling through that resolved prompt list until `state/STOP` is present before the next prompt or a prompt exits non-zero. Pass `--interval MINUTES` (floats accepted, e.g. `--interval 0.5`) to pause between cycles; the stop signal is still checked every second during the wait.
 
 ## Learning Path
 
