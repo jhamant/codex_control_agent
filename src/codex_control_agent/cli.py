@@ -47,6 +47,32 @@ class LoopStatePaths:
     last_exit_code_path: Path
 
 
+def format_pause_duration(total_seconds: float) -> str:
+    rounded_seconds = max(1, int(round(total_seconds)))
+    hours, remainder = divmod(rounded_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    parts: list[str] = []
+    if hours:
+        parts.append(f"{hours} hour" if hours == 1 else f"{hours} hours")
+    if minutes:
+        parts.append(f"{minutes} minute" if minutes == 1 else f"{minutes} minutes")
+    if seconds or not parts:
+        parts.append(f"{seconds} second" if seconds == 1 else f"{seconds} seconds")
+
+    if len(parts) == 1:
+        return parts[0]
+    if len(parts) == 2:
+        return f"{parts[0]} and {parts[1]}"
+    return f"{parts[0]}, {parts[1]}, and {parts[2]}"
+
+
+def format_local_timestamp(timestamp: float) -> str:
+    return datetime.fromtimestamp(timestamp).astimezone().strftime(
+        "%Y-%m-%d %I:%M:%S %p %Z"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Bare-bones controller scaffold for Codex CLI workflows."
@@ -281,10 +307,13 @@ def handle_run_loop(args: argparse.Namespace) -> int:
         completed_cycles += 1
 
         if args.interval is not None:
-            deadline = time.monotonic() + args.interval * 60
+            pause_seconds = args.interval * 60
+            deadline = time.monotonic() + pause_seconds
+            restart_time = format_local_timestamp(time.time() + pause_seconds)
             print(
                 f"run-loop: completed cycle {completed_cycles}; "
-                f"waiting {args.interval} minute(s) before next cycle",
+                f"pausing for {format_pause_duration(pause_seconds)} "
+                f"(expected restart: {restart_time})",
                 file=sys.stderr,
             )
             while time.monotonic() < deadline:
